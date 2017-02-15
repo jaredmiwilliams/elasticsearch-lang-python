@@ -84,7 +84,14 @@ public class PythonScriptEngineService extends AbstractComponent implements Scri
     public Object execute(Object compiledScript, Map<String, Object> vars) {
         PyObject pyVars = Py.java2py(vars);
         interp.setLocals(pyVars);
-        PyObject ret = interp.eval((PyCode) compiledScript);
+        PyObject ret;
+        if (vars.containsKey("_return_var")) {
+            interp.exec((PyCode) compiledScript);
+            ret = interp.get((String) vars.get("_return_var"));
+        } else {
+            ret = interp.eval((PyCode) compiledScript);
+        }
+
         if (ret == null) {
             return null;
         }
@@ -112,11 +119,16 @@ public class PythonScriptEngineService extends AbstractComponent implements Scri
 
         private final PyStringMap pyVars;
 
+        private String returnVar = null;
+
         public PythonExecutableScript(PyCode code, Map<String, Object> vars) {
             this.code = code;
             this.pyVars = new PyStringMap();
             if (vars != null) {
                 for (Map.Entry<String, Object> entry : vars.entrySet()) {
+                    if (entry.getKey().equals("_return_var")) {
+                        returnVar = (String) entry.getValue();
+                    }
                     pyVars.__setitem__(entry.getKey(), Py.java2py(entry.getValue()));
                 }
             }
@@ -130,7 +142,14 @@ public class PythonScriptEngineService extends AbstractComponent implements Scri
         @Override
         public Object run() {
             interp.setLocals(pyVars);
-            PyObject ret = interp.eval(code);
+            PyObject ret;
+            if (returnVar != null) {
+                interp.exec(code);
+                ret = interp.get(returnVar);
+            } else {
+                ret = interp.eval(code);
+            }
+
             if (ret == null) {
                 return null;
             }
@@ -151,6 +170,8 @@ public class PythonScriptEngineService extends AbstractComponent implements Scri
 
         private final SearchLookup lookup;
 
+        private String returnVar = null;
+
         public PythonSearchScript(PyCode code, Map<String, Object> vars, SearchLookup lookup) {
             this.code = code;
             this.pyVars = new PyStringMap();
@@ -159,6 +180,9 @@ public class PythonScriptEngineService extends AbstractComponent implements Scri
             }
             if (vars != null) {
                 for (Map.Entry<String, Object> entry : vars.entrySet()) {
+                    if (entry.getKey().equals("_return_var")) {
+                        returnVar = (String) entry.getValue();
+                    }
                     pyVars.__setitem__(entry.getKey(), Py.java2py(entry.getValue()));
                 }
             }
@@ -193,7 +217,13 @@ public class PythonScriptEngineService extends AbstractComponent implements Scri
         @Override
         public Object run() {
             interp.setLocals(pyVars);
-            PyObject ret = interp.eval(code);
+            PyObject ret;
+            if (returnVar != null) {
+                interp.exec(code);
+                ret = interp.get(returnVar);
+            } else {
+                ret = interp.eval(code);
+            }
             if (ret == null) {
                 return null;
             }
